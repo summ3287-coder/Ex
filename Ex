@@ -1,0 +1,236 @@
+-- Roblox Mobile Fixed FPS Script (Highlight ESP + Line Tracers + Fixed Center FOV Aim)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+-- Clean up old GUI if exists
+if game.CoreGui:FindFirstChild("FPS_Script_GUI") then
+    game.CoreGui.FPS_Script_GUI:Destroy()
+end
+
+-- GUI Main Setup
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FPS_Script_GUI"
+ScreenGui.Parent = game.CoreGui
+
+local MainFrame = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local UICorner = Instance.new("UICorner")
+local CloseBtn = Instance.new("TextButton")
+local OpenBtn = Instance.new("TextButton")
+local OpenCorner = Instance.new("UICorner")
+
+-- Main Frame (Menu)
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainFrame.Position = UDim2.new(0.05, 0, 0.25, 0)
+MainFrame.Size = UDim2.new(0, 230, 0, 260)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = true
+
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+Title.Parent = MainFrame
+Title.Size = UDim2.new(0.8, 0, 0, 40)
+Title.Position = UDim2.new(0.05, 0, 0, 0)
+Title.Text = "FPS Aimbot & ESP (TH)"
+Title.TextColor3 = Color3.fromRGB(0, 255, 200)
+Title.BackgroundTransparency = 1
+Title.TextSize = 16
+Title.Font = Enum.Font.SourceSansBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Close Button [X]
+CloseBtn.Parent = MainFrame
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(0.85, 0, 0.03, 0)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseBtn.Font = Enum.Font.SourceSansBold
+CloseBtn.TextSize = 14
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = CloseBtn
+
+-- Circle Open Button (Logo Button)
+OpenBtn.Parent = ScreenGui
+OpenBtn.Size = UDim2.new(0, 50, 0, 50)
+OpenBtn.Position = UDim2.new(0.02, 0, 0.4, 0)
+OpenBtn.Text = "FPS"
+OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+OpenBtn.Font = Enum.Font.SourceSansBold
+OpenBtn.TextSize = 16
+OpenBtn.Active = true
+OpenBtn.Draggable = true
+OpenBtn.Visible = false
+
+OpenCorner.CornerRadius = UDim.new(1, 0) -- Perfect Circle
+OpenCorner.Parent = OpenBtn
+
+-- Menu Toggle Events
+CloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    OpenBtn.Visible = true
+end)
+
+OpenBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = true
+    OpenBtn.Visible = false
+end)
+
+-- Button Builder Function
+local function createButton(text, posY)
+    local btn = Instance.new("TextButton")
+    btn.Parent = MainFrame
+    btn.Position = UDim2.new(0.08, 0, posY, 0)
+    btn.Size = UDim2.new(0.84, 0, 0, 40)
+    btn.Text = text .. ": ปิด"
+    btn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 14
+    btn.Font = Enum.Font.SourceSansBold
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
+    return btn
+end
+
+local EspBoxBtn = createButton("กรอบสี่เหลี่ยม (Box ESP)", 0.20)
+local TracerBtn = createButton("เส้นโยงสีขาว (Tracers)", 0.39)
+local FOVAimbotBtn = createButton("วงกลมยิงออโต้ (FOV Aim)", 0.58)
+
+local isBoxESP = false
+local isTracers = false
+local isAimbot = false
+
+EspBoxBtn.MouseButton1Click:Connect(function()
+    isBoxESP = not isBoxESP
+    EspBoxBtn.Text = "กรอบสี่เหลี่ยม (Box ESP): " .. (isBoxESP and "เปิด" or "ปิด")
+    EspBoxBtn.BackgroundColor3 = isBoxESP and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(180, 50, 50)
+end)
+
+TracerBtn.MouseButton1Click:Connect(function()
+    isTracers = not isTracers
+    TracerBtn.Text = "เส้นโยงสีขาว (Tracers): " .. (isTracers and "เปิด" or "ปิด")
+    TracerBtn.BackgroundColor3 = isTracers and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(180, 50, 50)
+end)
+
+FOVAimbotBtn.MouseButton1Click:Connect(function()
+    isAimbot = not isAimbot
+    FOVAimbotBtn.Text = "วงกลมยิงออโต้ (FOV Aim): " .. (isAimbot and "เปิด" or "ปิด")
+    FOVAimbotBtn.BackgroundColor3 = isAimbot and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(180, 50, 50)
+end)
+
+-- Fixed Center FOV Circle (วาดวงกลมล็อคกลางจอถาวร)
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Radius = 140
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+FOVCircle.Thickness = 1.5
+FOVCircle.Filled = false
+FOVCircle.Transparency = 1
+FOVCircle.Visible = false
+
+-- Storage for Tracer Lines
+local TracersFolder = {}
+
+local function getCenterScreen()
+    return Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+end
+
+-- Get Enemy in FOV from Center Screen
+local function getClosestPlayerInFOV()
+    local closestPlayer = nil
+    local shortestDistance = FOVCircle.Radius
+    local centerPos = getCenterScreen()
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            if not (player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team) then
+                local head = player.Character.Head
+                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                
+                if onScreen then
+                    local targetPos = Vector2.new(pos.X, pos.Y)
+                    local distance = (centerPos - targetPos).Magnitude
+                    
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        closestPlayer = player
+                    end
+                end
+            end
+        end
+    end
+    return closestPlayer
+end
+
+-- Main Loop
+RunService.RenderStepped:Connect(function()
+    local centerPos = getCenterScreen()
+    
+    -- 1. FOV Circle Always Centered
+    FOVCircle.Position = centerPos
+    FOVCircle.Visible = isAimbot
+
+    -- 2. Aimbot Logic (Lock Target in Center FOV)
+    if isAimbot then
+        local target = getClosestPlayerInFOV()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.Head.Position)
+        end
+    end
+
+    -- Clear Old Tracers
+    for _, line in pairs(TracersFolder) do
+        line:Remove()
+    end
+    TracersFolder = {}
+
+    -- 3. ESP & Tracers Loop
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local char = player.Character
+            local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head")
+            
+            if hrp then
+                -- Box ESP (Highlight Method for Mobile Compatibility)
+                local highlight = char:FindFirstChild("Mobile_Highlight")
+                if isBoxESP then
+                    if not highlight then
+                        highlight = Instance.new("Highlight")
+                        highlight.Name = "Mobile_Highlight"
+                        highlight.FillTransparency = 0.5
+                        highlight.OutlineTransparency = 0
+                        highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        highlight.Parent = char
+                    end
+                else
+                    if highlight then highlight:Destroy() end
+                end
+
+                -- White Tracers Line (Draw Screen Line)
+                if isTracers then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+                    if onScreen then
+                        local line = Drawing.new("Line")
+                        line.From = Vector2.new(centerPos.X, centerPos.Y + 30) -- ลากจากกลางจอ
+                        line.To = Vector2.new(screenPos.X, screenPos.Y)
+                        line.Color = Color3.fromRGB(255, 255, 255) -- สีขาว
+                        line.Thickness = 1.5
+                        line.Transparency = 1
+                        line.Visible = true
+                        table.insert(TracersFolder, line)
+                    end
+                end
+            end
+        end
+    end
+end)
